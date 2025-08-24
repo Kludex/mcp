@@ -1,0 +1,27 @@
+[project]
+name = "json2types"
+version = "0.1.0"
+description = "Generate Python TypedDict types from JSON Schema"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["pydantic==2.11.7"]
+
+[project.scripts]
+json2types = "json2types.cli:main"
+
+[dependency-groups]
+dev = [
+    "inline-snapshot>=0.27.2",
+    "pyright",
+    "pytest",
+]
+
+[tool.ruff]
+line-length = 120
+select = ["I"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+[tool.inline-snapshot]
+format-command = ''
