@@ -1,6 +1,7 @@
 import functools
 import inspect
-from typing import Callable
+from dataclasses import dataclass
+from typing import Callable, Sequence
 
 
 def is_async_callable(obj: object) -> bool:
@@ -28,11 +29,6 @@ class Tool:
         self.handler = handler
         self.description = description
         self.input_schema = input_schema or {"type": "object", "properties": {}}
-        
-    async def call(self, **kwargs: object) -> object:
-        if is_async_callable(self.handler):
-            return await self.handler(**kwargs)  # type: ignore
-        return self.handler(**kwargs)
 
 
 class Resource:
@@ -50,11 +46,6 @@ class Resource:
         self.name = name or uri.split('/')[-1]
         self.description = description
         self.mime_type = mime_type
-        
-    async def read(self, **kwargs: object) -> object:
-        if is_async_callable(self.handler):
-            return await self.handler(**kwargs)  # type: ignore
-        return self.handler(**kwargs)
 
 
 class Prompt:
@@ -70,29 +61,54 @@ class Prompt:
         self.handler = handler
         self.description = description
         self.arguments = arguments or []
-        
-    async def get(self, **kwargs: object) -> object:
-        if is_async_callable(self.handler):
-            return await self.handler(**kwargs)  # type: ignore
-        return self.handler(**kwargs)
 
 
+@dataclass(slots=True)
 class Server:
+    tools: list[Tool]
+    resources: list[Resource] 
+    prompts: list[Prompt]
+    
     def __init__(
         self,
-        tools: list[Tool] | None = None,
-        resources: list[Resource] | None = None,
-        prompts: list[Prompt] | None = None,
+        tools: Sequence[Tool] | None = None,
+        resources: Sequence[Resource] | None = None,
+        prompts: Sequence[Prompt] | None = None,
     ):
-        self.tools = tools or []
-        self.resources = resources or []
-        self.prompts = prompts or []
+        self.tools = list(tools or [])
+        self.resources = list(resources or [])
+        self.prompts = list(prompts or [])
     
-    def add_tool(self, tool: Tool) -> None:
+    def add_tool(
+        self,
+        name: str,
+        handler: Callable[..., object],
+        *,
+        description: str | None = None,
+        input_schema: dict[str, object] | None = None,
+    ) -> None:
+        tool = Tool(name, handler, description=description, input_schema=input_schema)
         self.tools.append(tool)
     
-    def add_resource(self, resource: Resource) -> None:
+    def add_resource(
+        self,
+        uri: str,
+        handler: Callable[..., object],
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        mime_type: str | None = None,
+    ) -> None:
+        resource = Resource(uri, handler, name=name, description=description, mime_type=mime_type)
         self.resources.append(resource)
     
-    def add_prompt(self, prompt: Prompt) -> None:
+    def add_prompt(
+        self,
+        name: str,
+        handler: Callable[..., object],
+        *,
+        description: str | None = None,
+        arguments: list[dict[str, object]] | None = None,
+    ) -> None:
+        prompt = Prompt(name, handler, description=description, arguments=arguments)
         self.prompts.append(prompt)
