@@ -1,5 +1,18 @@
-import asyncio
+import functools
+import inspect
 from typing import Callable
+
+
+def is_async_callable(obj: object) -> bool:
+    """
+    Correctly determines if an object is a coroutine function,
+    including those wrapped in functools.partial objects.
+    """
+    while isinstance(obj, functools.partial):
+        obj = obj.func
+    return inspect.iscoroutinefunction(obj) or (
+        callable(obj) and inspect.iscoroutinefunction(obj.__call__)
+    )
 
 
 class Tool:
@@ -7,6 +20,8 @@ class Tool:
         self,
         name: str,
         handler: Callable[..., object],
+        /,
+        *,
         description: str | None = None,
         input_schema: dict[str, object] | None = None,
     ):
@@ -16,8 +31,8 @@ class Tool:
         self.input_schema = input_schema or {"type": "object", "properties": {}}
         
     async def call(self, **kwargs: object) -> object:
-        if asyncio.iscoroutinefunction(self.handler):
-            return await self.handler(**kwargs)
+        if is_async_callable(self.handler):
+            return await self.handler(**kwargs)  # type: ignore
         return self.handler(**kwargs)
 
 
@@ -26,6 +41,8 @@ class Resource:
         self,
         uri: str,
         handler: Callable[..., object],
+        /,
+        *,
         name: str | None = None,
         description: str | None = None,
         mime_type: str | None = None,
@@ -37,8 +54,8 @@ class Resource:
         self.mime_type = mime_type
         
     async def read(self, **kwargs: object) -> object:
-        if asyncio.iscoroutinefunction(self.handler):
-            return await self.handler(**kwargs)
+        if is_async_callable(self.handler):
+            return await self.handler(**kwargs)  # type: ignore
         return self.handler(**kwargs)
 
 
@@ -47,6 +64,8 @@ class Prompt:
         self,
         name: str,
         handler: Callable[..., object],
+        /,
+        *,
         description: str | None = None,
         arguments: list[dict[str, object]] | None = None,
     ):
@@ -56,8 +75,8 @@ class Prompt:
         self.arguments = arguments or []
         
     async def get(self, **kwargs: object) -> object:
-        if asyncio.iscoroutinefunction(self.handler):
-            return await self.handler(**kwargs)
+        if is_async_callable(self.handler):
+            return await self.handler(**kwargs)  # type: ignore
         return self.handler(**kwargs)
 
 
