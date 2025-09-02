@@ -147,7 +147,7 @@ class NamingTest(TypedDict):
         pytest.param(
             """{
       "type": "object",
-      "title": "user-profile",
+      "title": "UserProfile",
       "properties": {
         "nested": {
           "type": "object",
@@ -163,7 +163,7 @@ from typing_extensions import TypedDict, NotRequired
 class Nested(TypedDict):
     value: NotRequired[str]
 
-class user-profile(TypedDict):
+class UserProfile(TypedDict):
     nested: NotRequired[Nested]\
 """),
             id="class-name-conversion",

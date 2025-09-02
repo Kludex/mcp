@@ -8,8 +8,6 @@ import re
 from enum import Enum
 from typing import Any
 
-from pydantic.alias_generators import to_pascal
-
 
 class JsonSchemaVersion(Enum):
     """Supported JSON Schema versions."""
@@ -54,6 +52,10 @@ class TypeGenerator:
         # Cache for definitions to avoid duplicates
         self.definitions: dict[str, dict[str, Any]] = {}
         self.processed_refs: dict[str, str] = {}  # ref_uri -> class_name
+        # Track generated class names to avoid duplicates
+        self.class_names: set[str] = set()
+        # Context stack for creating unique nested class names
+        self.context_stack: list[str] = []
 
         if self.version == JsonSchemaVersion.DRAFT_2020_12:
             # JSON Schema 2020-12 uses $defs
@@ -66,6 +68,49 @@ class TypeGenerator:
         """Generate the complete Python module."""
         self._process_schema(self.schema)
         return self._build_module()
+
+    def _to_class_name(self, name: str) -> str:
+        """Convert name to proper PascalCase class name, preserving existing casing."""
+        if not name:
+            return "GeneratedType"
+
+        # If already in PascalCase (starts with uppercase), keep it
+        if name[0].isupper() and "_" not in name.lower():
+            return name
+
+        # Handle special underscore prefix like '_meta' -> 'Meta'
+        if name.startswith("_"):
+            return name[1:].capitalize()
+
+        # Convert to PascalCase, handling compound words better than to_pascal
+        # First, split on common word boundaries and capitalize each part
+        import re
+
+        # Handle camelCase input by inserting spaces before uppercase letters
+        spaced = re.sub(r"([a-z])([A-Z])", r"\1 \2", name)
+
+        # Split on spaces, underscores, and hyphens, then capitalize each word
+        words = re.split(r"[\s_-]+", spaced)
+        pascal_name = "".join(word.capitalize() for word in words if word)
+
+        return pascal_name
+
+    def _generate_unique_class_name(self, base_name: str, context_name: str = "", is_ref: bool = False) -> str:
+        """Generate a unique class name, avoiding duplicates."""
+        clean_name = self._to_class_name(base_name)
+
+        # For $ref references, use the exact name from the reference without context prefixing
+        if is_ref:
+            unique_name = clean_name
+        elif context_name and clean_name in self.class_names:
+            # Create context-specific name like 'ElicitRequestParams'
+            context_pascal = self._to_class_name(context_name)
+            unique_name = f"{context_pascal}{clean_name}"
+        else:
+            unique_name = clean_name
+
+        self.class_names.add(unique_name)
+        return unique_name
 
     def _resolve_ref(self, ref_uri: str) -> dict[str, Any]:
         """Resolve a $ref URI to the actual schema."""
@@ -87,11 +132,29 @@ class TypeGenerator:
 
     def _process_schema(self, schema: dict[str, Any], context_name: str = "") -> ast.expr:
         """Process a schema object and return the type AST node."""
-        # TODO(Marcelo): This is completely wrong. Ask the LLM to fix it.
+        # Add context to stack for nested processing
+        if context_name:
+            self.context_stack.append(context_name)
+        # Handle definitions - these should be processed to generate classes
         if "definitions" in schema:
             for name, definition in schema["definitions"].items():
-                result = self._process_schema(definition, name)
-        elif "$ref" in schema:
+                # Process each definition to generate the class
+                self._process_schema(definition, name)
+            # After processing definitions, continue with the main schema
+            # Remove definitions to avoid infinite recursion
+            schema = {k: v for k, v in schema.items() if k != "definitions"}
+
+        # Handle $defs for JSON Schema 2020-12
+        if "$defs" in schema:
+            for name, definition in schema["$defs"].items():
+                # Process each definition to generate the class
+                self._process_schema(definition, name)
+            # After processing $defs, continue with the main schema
+            # Remove $defs to avoid infinite recursion
+            schema = {k: v for k, v in schema.items() if k != "$defs"}
+
+        # Handle $ref references
+        if "$ref" in schema:
             ref_uri = schema["$ref"]
 
             # Check if we've already processed this reference
@@ -101,34 +164,63 @@ class TypeGenerator:
 
             resolved_schema = self._resolve_ref(ref_uri)
             if resolved_schema:
-                # Generate class name from the reference path
+                # Generate class name from the reference path, not context
                 if ref_uri.startswith("#/"):
                     path_parts: list[str] = ref_uri[2:].split("/")
-                    ref_class_name: str = path_parts[-1] if path_parts else context_name or "GeneratedType"
+                    ref_class_name: str = path_parts[-1] if path_parts else "GeneratedType"
                 else:
-                    ref_class_name = context_name or "GeneratedType"
+                    ref_class_name = "GeneratedType"
 
-                result = self._process_schema(resolved_schema, ref_class_name)
+                # Process the schema with the ref class name (not context), marking it as a ref
+                if resolved_schema.get("type") == "object":
+                    result = self._process_object(resolved_schema, ref_class_name, is_ref=True)
+                else:
+                    result = self._process_schema(resolved_schema, ref_class_name)
 
                 # Cache the result if it's a class reference
                 if isinstance(result, ast.Name):
                     self.processed_refs[ref_uri] = result.id
                 return result
-        if schema.get("type") == "object":
-            return self._process_object(schema, context_name)
-        elif schema.get("type") == "array":
-            return self._process_array(schema)
-        else:
-            return self._process_primitive(schema)
+            else:
+                # If reference cannot be resolved, return Any
+                return ast.Name(id="Any", ctx=ast.Load())
 
-    def _process_object(self, schema: dict[str, Any], context_name: str = "") -> ast.Name:
+        try:
+            # Handle different schema types
+            if schema.get("type") == "object":
+                return self._process_object(schema, context_name)
+            elif schema.get("type") == "array":
+                return self._process_array(schema)
+            else:
+                return self._process_primitive(schema)
+        finally:
+            # Remove context from stack when done
+            if context_name and self.context_stack and self.context_stack[-1] == context_name:
+                self.context_stack.pop()
+
+    def _process_object(self, schema: dict[str, Any], context_name: str = "", is_ref: bool = False) -> ast.Name:
         """Process an object schema and generate TypedDict class."""
         title = schema.get("title")
         if not title and context_name:
             # Generate name from context (e.g., "preferences" -> "Preferences")
-            title = to_pascal(context_name)
+            title = context_name
         elif not title:
             title = "GeneratedType"
+
+        # Get parent context for unique naming of nested classes
+        parent_context = ""
+        if not is_ref:
+            if len(self.context_stack) >= 2:
+                parent_context = self.context_stack[-2]
+            elif len(self.context_stack) == 1:
+                parent_context = self.context_stack[-1]
+
+        # Generate unique class name
+        unique_title = self._generate_unique_class_name(title, parent_context, is_ref)
+
+        # If this class already exists, just return a reference to it
+        if any(node.name == unique_title for node in self.class_nodes if isinstance(node, ast.ClassDef)):
+            return ast.Name(id=unique_title, ctx=ast.Load())
 
         properties = schema.get("properties", {})
         required = set(schema.get("required", []))
@@ -165,10 +257,10 @@ class TypeGenerator:
 
         # Create class node
         body_nodes: list[ast.stmt] = annotations if annotations else [ast.Pass()]
-        class_node = ast.ClassDef(name=title, bases=bases, keywords=[], decorator_list=[], body=body_nodes)
+        class_node = ast.ClassDef(name=unique_title, bases=bases, keywords=[], decorator_list=[], body=body_nodes)
 
         self.class_nodes.append(class_node)
-        return ast.Name(id=title, ctx=ast.Load())
+        return ast.Name(id=unique_title, ctx=ast.Load())
 
     def _process_array(self, schema: dict[str, Any]) -> ast.Subscript:
         """Process an array schema."""
@@ -231,12 +323,14 @@ class TypeGenerator:
         """Build the final Python module from AST."""
         # Create import statements
         import_nodes: list[ast.stmt] = []
+
+        # Check if we need Any import
+        temp_module = ast.Module(body=self.class_nodes, type_ignores=[])
+        code_str = ast.unparse(temp_module)
+
         for module in sorted(self.imports):
             if module == "typing_extensions":
                 names: list[ast.alias] = []
-                # Check if we need specific imports by examining class nodes
-                temp_module = ast.Module(body=self.class_nodes, type_ignores=[])
-                code_str = ast.unparse(temp_module)
                 if "TypedDict" in code_str:
                     names.append(ast.alias(name="TypedDict"))
                 if "NotRequired" in code_str:
@@ -248,6 +342,10 @@ class TypeGenerator:
                     import_nodes.append(ast.ImportFrom(module="typing_extensions", names=names, level=0))
             elif module == "pydantic":
                 import_nodes.append(ast.ImportFrom(module="pydantic", names=[ast.alias(name="Field")], level=0))
+
+        # Add Any import if needed
+        if "Any" in code_str:
+            import_nodes.insert(0, ast.ImportFrom(module="typing", names=[ast.alias(name="Any")], level=0))
 
         # Create complete module
         all_nodes: list[ast.stmt] = import_nodes + self.class_nodes
