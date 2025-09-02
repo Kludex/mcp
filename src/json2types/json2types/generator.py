@@ -270,6 +270,12 @@ class TypeGenerator:
 
     def _process_primitive(self, schema: dict[str, Any]) -> ast.expr:
         """Process primitive types."""
+        # Handle const values as Literal types
+        if "const" in schema:
+            const_value = schema["const"]
+            self.imports.add("typing_extensions")  # for Literal
+            return self._create_subscript("Literal", [ast.Constant(value=const_value)])
+
         type_mapping = {"string": "str", "number": "float", "integer": "int", "boolean": "bool", "null": "None"}
 
         schema_type: Any = schema.get("type")
@@ -337,6 +343,8 @@ class TypeGenerator:
                     names.append(ast.alias(name="NotRequired"))
                 if "Annotated" in code_str:
                     names.append(ast.alias(name="Annotated"))
+                if "Literal" in code_str:
+                    names.append(ast.alias(name="Literal"))
 
                 if names:
                     import_nodes.append(ast.ImportFrom(module="typing_extensions", names=names, level=0))

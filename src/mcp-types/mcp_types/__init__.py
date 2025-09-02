@@ -1,7 +1,7 @@
 from typing import Any
 
 from pydantic import Field
-from typing_extensions import Annotated, NotRequired, TypedDict
+from typing_extensions import Annotated, Literal, NotRequired, TypedDict
 
 
 class Annotations(TypedDict):
@@ -19,7 +19,7 @@ class AudioContent(TypedDict):
     annotations: NotRequired[Annotations]
     data: str
     mime_type: Annotated[str, Field(alias="mimeType")]
-    type: str
+    type: Literal["audio"]
 
 
 class BaseMetadata(TypedDict):
@@ -42,7 +42,7 @@ class BooleanSchema(TypedDict):
     default: NotRequired[bool]
     description: NotRequired[str]
     title: NotRequired[str]
-    type: str
+    type: Literal["boolean"]
 
 
 class Arguments(TypedDict):
@@ -55,7 +55,7 @@ class Params(TypedDict):
 
 
 class CallToolRequest(TypedDict):
-    method: str
+    method: Literal["tools/call"]
     params: Params
 
 
@@ -80,7 +80,7 @@ class CancelledNotificationParams(TypedDict):
 
 
 class CancelledNotification(TypedDict):
-    method: str
+    method: Literal["notifications/cancelled"]
     params: CancelledNotificationParams
 
 
@@ -127,7 +127,7 @@ class CompleteRequestParams(TypedDict):
 
 
 class CompleteRequest(TypedDict):
-    method: str
+    method: Literal["completion/complete"]
     params: CompleteRequestParams
 
 
@@ -178,7 +178,7 @@ class CreateMessageRequestParams(TypedDict):
 
 
 class CreateMessageRequest(TypedDict):
-    method: str
+    method: Literal["sampling/createMessage"]
     params: CreateMessageRequestParams
 
 
@@ -201,7 +201,7 @@ class Properties(TypedDict):
 class RequestedSchema(TypedDict):
     properties: Properties
     required: NotRequired[list[str]]
-    type: str
+    type: Literal["object"]
 
 
 class ElicitRequestParams(TypedDict):
@@ -210,7 +210,7 @@ class ElicitRequestParams(TypedDict):
 
 
 class ElicitRequest(TypedDict):
-    method: str
+    method: Literal["elicitation/create"]
     params: ElicitRequestParams
 
 
@@ -236,7 +236,7 @@ class EmbeddedResource(TypedDict):
     _meta: NotRequired[EmbeddedResourceMeta]
     annotations: NotRequired[Annotations]
     resource: Any
-    type: str
+    type: Literal["resource"]
 
 
 class EmptyResultMeta(TypedDict):
@@ -252,7 +252,7 @@ class EnumSchema(TypedDict):
     enum: list[str]
     enum_names: Annotated[NotRequired[list[str]], Field(alias="enumNames")]
     title: NotRequired[str]
-    type: str
+    type: Literal["string"]
 
 
 class ParamsArguments(TypedDict):
@@ -265,7 +265,7 @@ class GetPromptRequestParams(TypedDict):
 
 
 class GetPromptRequest(TypedDict):
-    method: str
+    method: Literal["prompts/get"]
     params: GetPromptRequestParams
 
 
@@ -293,7 +293,7 @@ class ImageContent(TypedDict):
     annotations: NotRequired[Annotations]
     data: str
     mime_type: Annotated[str, Field(alias="mimeType")]
-    type: str
+    type: Literal["image"]
 
 
 class Implementation(TypedDict):
@@ -309,7 +309,7 @@ class InitializeRequestParams(TypedDict):
 
 
 class InitializeRequest(TypedDict):
-    method: str
+    method: Literal["initialize"]
     params: InitializeRequestParams
 
 
@@ -368,7 +368,7 @@ class InitializedNotificationParams(TypedDict):
 
 
 class InitializedNotification(TypedDict):
-    method: str
+    method: Literal["notifications/initialized"]
     params: NotRequired[InitializedNotificationParams]
 
 
@@ -381,7 +381,7 @@ class Error(TypedDict):
 class JSONRPCError(TypedDict):
     error: Error
     id: str | int
-    jsonrpc: str
+    jsonrpc: Literal["2.0"]
 
 
 class JSONRPCNotificationParams(TypedDict):
@@ -389,7 +389,7 @@ class JSONRPCNotificationParams(TypedDict):
 
 
 class JSONRPCNotification(TypedDict):
-    jsonrpc: str
+    jsonrpc: Literal["2.0"]
     method: str
     params: NotRequired[JSONRPCNotificationParams]
 
@@ -400,14 +400,14 @@ class IdParams(TypedDict):
 
 class JSONRPCRequest(TypedDict):
     id: str | int
-    jsonrpc: str
+    jsonrpc: Literal["2.0"]
     method: str
     params: NotRequired[IdParams]
 
 
 class JSONRPCResponse(TypedDict):
     id: str | int
-    jsonrpc: str
+    jsonrpc: Literal["2.0"]
     result: Result
 
 
@@ -416,7 +416,7 @@ class ListPromptsRequestParams(TypedDict):
 
 
 class ListPromptsRequest(TypedDict):
-    method: str
+    method: Literal["prompts/list"]
     params: NotRequired[ListPromptsRequestParams]
 
 
@@ -454,7 +454,7 @@ class ListResourceTemplatesRequestParams(TypedDict):
 
 
 class ListResourceTemplatesRequest(TypedDict):
-    method: str
+    method: Literal["resources/templates/list"]
     params: NotRequired[ListResourceTemplatesRequestParams]
 
 
@@ -487,7 +487,7 @@ class ListResourcesRequestParams(TypedDict):
 
 
 class ListResourcesRequest(TypedDict):
-    method: str
+    method: Literal["resources/list"]
     params: NotRequired[ListResourcesRequestParams]
 
 
@@ -521,7 +521,7 @@ class ListRootsRequestParams(TypedDict):
 
 
 class ListRootsRequest(TypedDict):
-    method: str
+    method: Literal["roots/list"]
     params: NotRequired[ListRootsRequestParams]
 
 
@@ -549,7 +549,7 @@ class ListToolsRequestParams(TypedDict):
 
 
 class ListToolsRequest(TypedDict):
-    method: str
+    method: Literal["tools/list"]
     params: NotRequired[ListToolsRequestParams]
 
 
@@ -576,7 +576,7 @@ class InputSchemaProperties(TypedDict):
 class InputSchema(TypedDict):
     properties: NotRequired[InputSchemaProperties]
     required: NotRequired[list[str]]
-    type: str
+    type: Literal["object"]
 
 
 class OutputSchemaProperties(TypedDict):
@@ -586,7 +586,7 @@ class OutputSchemaProperties(TypedDict):
 class OutputSchema(TypedDict):
     properties: NotRequired[OutputSchemaProperties]
     required: NotRequired[list[str]]
-    type: str
+    type: Literal["object"]
 
 
 class Tool(TypedDict):
@@ -612,7 +612,7 @@ class LoggingMessageNotificationParams(TypedDict):
 
 
 class LoggingMessageNotification(TypedDict):
-    method: str
+    method: Literal["notifications/message"]
     params: LoggingMessageNotificationParams
 
 
@@ -667,7 +667,7 @@ class PingRequestParams(TypedDict):
 
 
 class PingRequest(TypedDict):
-    method: str
+    method: Literal["ping"]
     params: NotRequired[PingRequestParams]
 
 
@@ -679,7 +679,7 @@ class ProgressNotificationParams(TypedDict):
 
 
 class ProgressNotification(TypedDict):
-    method: str
+    method: Literal["notifications/progress"]
     params: ProgressNotificationParams
 
 
@@ -707,7 +707,7 @@ class PromptListChangedNotificationParams(TypedDict):
 
 
 class PromptListChangedNotification(TypedDict):
-    method: str
+    method: Literal["notifications/prompts/list_changed"]
     params: NotRequired[PromptListChangedNotificationParams]
 
 
@@ -719,7 +719,7 @@ class ProgressTokenPromptMessage(TypedDict):
 class PromptReference(TypedDict):
     name: str
     title: NotRequired[str]
-    type: str
+    type: Literal["ref/prompt"]
 
 
 class ReadResourceRequestParams(TypedDict):
@@ -727,7 +727,7 @@ class ReadResourceRequestParams(TypedDict):
 
 
 class ReadResourceRequest(TypedDict):
-    method: str
+    method: Literal["resources/read"]
     params: ReadResourceRequestParams
 
 
@@ -786,7 +786,7 @@ class ResourceLink(TypedDict):
     name: str
     size: NotRequired[int]
     title: NotRequired[str]
-    type: str
+    type: Literal["resource_link"]
     uri: str
 
 
@@ -795,7 +795,7 @@ class ResourceListChangedNotificationParams(TypedDict):
 
 
 class ResourceListChangedNotification(TypedDict):
-    method: str
+    method: Literal["notifications/resources/list_changed"]
     params: NotRequired[ResourceListChangedNotificationParams]
 
 
@@ -814,7 +814,7 @@ class AnnotationsResourceTemplate(TypedDict):
 
 
 class ResourceTemplateReference(TypedDict):
-    type: str
+    type: Literal["ref/resource"]
     uri: str
 
 
@@ -823,7 +823,7 @@ class ResourceUpdatedNotificationParams(TypedDict):
 
 
 class ResourceUpdatedNotification(TypedDict):
-    method: str
+    method: Literal["notifications/resources/updated"]
     params: ResourceUpdatedNotificationParams
 
 
@@ -850,7 +850,7 @@ class RootsListChangedNotificationParams(TypedDict):
 
 
 class RootsListChangedNotification(TypedDict):
-    method: str
+    method: Literal["notifications/roots/list_changed"]
     params: NotRequired[RootsListChangedNotificationParams]
 
 
@@ -898,7 +898,7 @@ class SetLevelRequestParams(TypedDict):
 
 
 class SetLevelRequest(TypedDict):
-    method: str
+    method: Literal["logging/setLevel"]
     params: SetLevelRequestParams
 
 
@@ -908,7 +908,7 @@ class StringSchema(TypedDict):
     max_length: Annotated[NotRequired[int], Field(alias="maxLength")]
     min_length: Annotated[NotRequired[int], Field(alias="minLength")]
     title: NotRequired[str]
-    type: str
+    type: Literal["string"]
 
 
 class SubscribeRequestParams(TypedDict):
@@ -916,7 +916,7 @@ class SubscribeRequestParams(TypedDict):
 
 
 class SubscribeRequest(TypedDict):
-    method: str
+    method: Literal["resources/subscribe"]
     params: SubscribeRequestParams
 
 
@@ -928,7 +928,7 @@ class TextContent(TypedDict):
     _meta: NotRequired[TextContentMeta]
     annotations: NotRequired[Annotations]
     text: str
-    type: str
+    type: Literal["text"]
 
 
 class TextResourceContentsMeta(TypedDict):
@@ -949,13 +949,13 @@ class ToolMeta(TypedDict):
 class AnnotationsInputSchema(TypedDict):
     properties: NotRequired[InputSchemaProperties]
     required: NotRequired[list[str]]
-    type: str
+    type: Literal["object"]
 
 
 class AnnotationsOutputSchema(TypedDict):
     properties: NotRequired[OutputSchemaProperties]
     required: NotRequired[list[str]]
-    type: str
+    type: Literal["object"]
 
 
 class AnnotationsTool(TypedDict):
@@ -981,7 +981,7 @@ class ToolListChangedNotificationParams(TypedDict):
 
 
 class ToolListChangedNotification(TypedDict):
-    method: str
+    method: Literal["notifications/tools/list_changed"]
     params: NotRequired[ToolListChangedNotificationParams]
 
 
@@ -990,5 +990,5 @@ class UnsubscribeRequestParams(TypedDict):
 
 
 class UnsubscribeRequest(TypedDict):
-    method: str
+    method: Literal["resources/unsubscribe"]
     params: UnsubscribeRequestParams
