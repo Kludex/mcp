@@ -1,7 +1,3 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "monorepo"
 version = "0.0.0"
@@ -13,7 +9,7 @@ json2types = { workspace = true }
 mcp-types = { workspace = true }
 
 [tool.uv.workspace]
-members = ["src/*"]
+members = ["src/json2types", "src/mcp-types"]
 
 [tool.uv]
 package = false
