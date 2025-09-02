@@ -1,10 +1,18 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+bump = true
 
 [project]
 name = "json2types"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Generate Python TypedDict types from JSON Schema"
 readme = "README.md"
 requires-python = ">=3.13"

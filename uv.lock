@@ -139,7 +139,6 @@ wheels = [
 
 [[package]]
 name = "json2types"
-version = "0.1.0"
 source = { editable = "src/json2types" }
 dependencies = [
     { name = "pydantic" },
@@ -162,7 +161,6 @@ wheels = [
 
 [[package]]
 name = "mcp-types"
-version = "0.1.0"
 source = { editable = "src/mcp-types" }
 
 [[package]]
