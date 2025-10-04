@@ -2,24 +2,28 @@
 name = "monorepo"
 version = "0.0.0"
 requires-python = ">=3.12"
-dependencies = ["json2types", "mcp-types"]
+dependencies = ["json2types", "mcp-types", "mcplette"]
 
 [tool.uv.sources]
 json2types = { workspace = true }
 mcp-types = { workspace = true }
+mcplette = { workspace = true }
 
 [tool.uv.workspace]
-members = ["src/json2types", "src/mcp-types"]
+members = ["src/json2types", "src/mcp-types", "src/mcplette"]
 
 [tool.uv]
 package = false
 required-version = ">=0.8.4"
-dev-dependencies = [
+
+[dependency-groups]
+dev = [
     "httpx",
     "inline-snapshot>=0.27.2",
     "pyright",
     "pytest",
     "ruff",
+    "uvicorn",
 ]
 
 [tool.ruff]

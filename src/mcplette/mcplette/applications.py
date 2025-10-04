@@ -1,14 +1,21 @@
+from __future__ import annotations as _annotations
+
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from .routing import Prompt, Resource, Tool
 
+if TYPE_CHECKING:
+    from uvicorn._types import ASGIReceiveCallable, ASGISendCallable, Scope
 
-@dataclass(slots=True)
-class Server:
+
+@dataclass(slots=True, kw_only=True)
+class MCP:
     tools: list[Tool] = field(default_factory=list)
     resources: list[Resource] = field(default_factory=list)
     prompts: list[Prompt] = field(default_factory=list)
+
+    _router: ... = field(init=False)
 
     def add_tool(
         self,
@@ -43,3 +50,6 @@ class Server:
     ) -> None:
         prompt = Prompt(name, handler, description=description, arguments=arguments)
         self.prompts.append(prompt)
+
+    async def __call__(self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable):
+        return await self._router(scope, receive, send)
