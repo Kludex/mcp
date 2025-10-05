@@ -1,55 +1,60 @@
 from __future__ import annotations as _annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import Any, Callable, Mapping, Sequence
 
-from .routing import Prompt, Resource, Tool
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import BaseRoute
+from starlette.types import ExceptionHandler, Lifespan
 
-if TYPE_CHECKING:
-    from uvicorn._types import ASGIReceiveCallable, ASGISendCallable, Scope
+from .routing import MCPRouter, Prompt, Resource, Tool
 
 
-@dataclass(slots=True, kw_only=True)
-class MCP:
-    tools: list[Tool] = field(default_factory=list)
-    resources: list[Resource] = field(default_factory=list)
-    prompts: list[Prompt] = field(default_factory=list)
-
-    _router: ... = field(init=False)
-
-    def add_tool(
+class MCP(Starlette):
+    def __init__(
         self,
-        name: str,
-        handler: Callable[..., object],
+        tools: Sequence[Tool] = (),
+        resources: Sequence[Resource] = (),
+        prompts: Sequence[Prompt] = (),
         *,
-        description: str | None = None,
-        input_schema: dict[str, object] | None = None,
+        debug: bool = False,
+        routes: Sequence[BaseRoute] | None = None,
+        middleware: Sequence[Middleware] | None = None,
+        exception_handlers: Mapping[Any, ExceptionHandler] | None = None,
+        on_startup: Sequence[Callable[[], Any]] | None = None,
+        on_shutdown: Sequence[Callable[[], Any]] | None = None,
+        lifespan: Lifespan[MCP] | None = None,
     ) -> None:
-        tool = Tool(name, handler, description=description, input_schema=input_schema)
-        self.tools.append(tool)
+        super().__init__(debug, routes, middleware, exception_handlers, on_startup, on_shutdown, lifespan)
 
-    def add_resource(
-        self,
-        uri: str,
-        handler: Callable[..., object],
-        *,
-        name: str | None = None,
-        description: str | None = None,
-        mime_type: str | None = None,
-    ) -> None:
-        resource = Resource(uri, handler, name=name, description=description, mime_type=mime_type)
-        self.resources.append(resource)
+        self.mcp_router = MCPRouter(tools=tools, resources=resources, prompts=prompts)
 
-    def add_prompt(
-        self,
-        name: str,
-        handler: Callable[..., object],
-        *,
-        description: str | None = None,
-        arguments: list[dict[str, object]] | None = None,
-    ) -> None:
-        prompt = Prompt(name, handler, description=description, arguments=arguments)
-        self.prompts.append(prompt)
+        self.router.add_route(
+            "/tools/{tool_name}/calls/{tool_call_id}",
+            self.mcp_router.handle_tools_call,
+            methods=["PUT"],
+        )
 
-    async def __call__(self, scope: Scope, receive: ASGIReceiveCallable, send: ASGISendCallable):
-        return await self._router(scope, receive, send)
+    def tool(self, name: str, description: str | None = None) -> ...:
+        def decorator(handler: Callable[..., object]) -> None:
+            self.mcp_router.add_tool(name, handler, description=description)
+
+        return decorator
+
+    def resource(
+        self, uri: str, name: str | None = None, description: str | None = None, mime_type: str | None = None
+    ) -> ...:
+        def decorator(handler: Callable[..., object]) -> None:
+            self.mcp_router.add_resource(uri, handler, name=name, description=description, mime_type=mime_type)
+
+        return decorator
+
+    def prompt(
+        self, name: str, description: str | None = None, arguments: list[dict[str, object]] | None = None
+    ) -> ...:
+        def decorator(handler: Callable[..., object]) -> None:
+            self.mcp_router.add_prompt(name, handler, description=description, arguments=arguments)
+
+        return decorator

@@ -1,16 +1,17 @@
 [project]
 name = "monorepo"
 version = "0.0.0"
-requires-python = ">=3.12"
-dependencies = ["json2types", "mcp-types", "mcplette"]
+requires-python = ">=3.10"
+dependencies = ["json2types", "mcp-types", "mcplette", "mcp-client"]
 
 [tool.uv.sources]
 json2types = { workspace = true }
 mcp-types = { workspace = true }
 mcplette = { workspace = true }
+mcp-client = { workspace = true }
 
 [tool.uv.workspace]
-members = ["src/json2types", "src/mcp-types", "src/mcplette"]
+members = ["src/json2types", "src/mcp-types", "src/mcplette", "src/mcp-client"]
 
 [tool.uv]
 package = false
@@ -30,7 +31,16 @@ dev = [
 line-length = 120
 
 [tool.ruff.lint]
-select = ["I"]
+extend-select = [
+    "Q",
+    "RUF100",
+    "RUF018", # https://docs.astral.sh/ruff/rules/assignment-in-assert/
+    "C90",
+    "UP",
+    "I",
+    # "D",
+    "TID251",
+]
 
 [tool.pyright]
 typeCheckingMode = "strict"

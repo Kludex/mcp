@@ -11,9 +11,12 @@ style = "pep440"
 bump = true
 
 [project]
-name = "mcplette"
+name = "mcp-client"
 dynamic = ["version"]
-description = "The MCP HTTP REST transport implementation!"
+description = "The MCP HTTP REST client implementation!"
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = ["starlette>=0.45.0"]
+requires-python = ">=3.13"
+dependencies = ["httpx", "click"]
+
+[project.scripts]
+mcp-client = "mcp_client.cli:main"
