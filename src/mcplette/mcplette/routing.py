@@ -1,7 +1,8 @@
 from __future__ import annotations as _annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import KW_ONLY, dataclass, field
-from typing import Any, Callable, ParamSpec, Sequence, TypeAlias, overload
+from typing import Any, ParamSpec, TypeAlias, overload
 
 from mcp_types import CallToolResult
 from mcp_types import Params as CallToolParams

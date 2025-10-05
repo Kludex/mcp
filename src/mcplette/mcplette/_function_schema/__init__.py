@@ -30,7 +30,7 @@ from __future__ import annotations as _annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from inspect import Parameter, signature
-from typing import Any, Concatenate, Literal, TypeAlias, cast, get_origin
+from typing import Any, Literal, TypeAlias, cast, get_origin
 
 from pydantic import ConfigDict
 from pydantic._internal import _decorators, _generate_schema, _typing_extra
@@ -39,7 +39,6 @@ from pydantic.fields import FieldInfo
 from pydantic.json_schema import GenerateJsonSchema
 from pydantic.plugin._schema_validator import create_schema_validator
 from pydantic_core import SchemaValidator, core_schema
-from typing_extensions import ParamSpec, TypeIs, TypeVar
 
 from .._context import RunContext
 from ._griffe import doc_descriptions
@@ -74,8 +73,8 @@ class FunctionSchema:
     description: str | None
     validator: SchemaValidator
     json_schema: ObjectJsonSchema
-    # if not None, the function takes a single by that name (besides potentially `info`)
-    takes_ctx: bool
+    # Name of the parameter that takes RunContext, or None if no such parameter
+    ctx_param: str | None
     is_async: bool
     single_arg_name: str | None = None
     positional_fields: list[str] = field(default_factory=list)
@@ -94,11 +93,15 @@ class FunctionSchema:
         if self.single_arg_name:
             args_dict = {self.single_arg_name: args_dict}
 
-        args = [ctx] if self.takes_ctx else []
+        args: list[Any] = []
         for positional_field in self.positional_fields:
             args.append(args_dict.pop(positional_field))  # pragma: no cover
         if self.var_positional_field:
             args.extend(args_dict.pop(self.var_positional_field))
+
+        # Add context to args_dict if the function expects it
+        if self.ctx_param:
+            args_dict[self.ctx_param] = ctx
 
         return args, args_dict
 
@@ -106,7 +109,6 @@ class FunctionSchema:
 def function_schema(  # noqa: C901
     function: Callable[..., Any],
     schema_generator: type[GenerateJsonSchema],
-    takes_ctx: bool | None = None,
     docstring_format: DocstringFormat = "auto",
     require_parameter_descriptions: bool = False,
 ) -> FunctionSchema:
@@ -114,7 +116,6 @@ def function_schema(  # noqa: C901
 
     Args:
         function: The function to build a validator and JSON schema for.
-        takes_ctx: Whether the function takes a `RunContext` first argument.
         docstring_format: The docstring format to use.
         require_parameter_descriptions: Whether to require descriptions for all tool function parameters.
         schema_generator: The JSON schema generator class to use.
@@ -122,8 +123,7 @@ def function_schema(  # noqa: C901
     Returns:
         A `FunctionSchema` instance.
     """
-    if takes_ctx is None:
-        takes_ctx = _takes_ctx(function)
+    ctx_param = _find_ctx_param(function)
 
     config = ConfigDict(title=function.__name__, use_attribute_docstrings=True)
     config_wrapper = ConfigWrapper(config)
@@ -147,37 +147,22 @@ def function_schema(  # noqa: C901
     description, field_descriptions = doc_descriptions(function, sig, docstring_format=docstring_format)
 
     if require_parameter_descriptions:
-        if takes_ctx:
-            parameters_without_ctx = set(
-                name for name in sig.parameters if not _is_call_ctx(sig.parameters[name].annotation)
-            )
-            missing_params = parameters_without_ctx - set(field_descriptions)
-        else:
-            missing_params = set(sig.parameters) - set(field_descriptions)
+        parameters_without_ctx = set(name for name in sig.parameters if name != ctx_param)
+        missing_params = parameters_without_ctx - set(field_descriptions)
 
         if missing_params:
             errors.append(f"Missing parameter descriptions for {', '.join(missing_params)}")
 
-    for index, (name, p) in enumerate(sig.parameters.items()):
+    for name, p in sig.parameters.items():
+        # Skip the context parameter
+        if name == ctx_param:
+            continue
+
         if p.annotation is sig.empty:
-            if takes_ctx and index == 0:
-                # should be the `context` argument, skip
-                continue
             # TODO warn?
             annotation = Any
         else:
             annotation = type_hints[name]
-
-            if index == 0 and takes_ctx:
-                if not _is_call_ctx(annotation):
-                    errors.append("First parameter of tools that take context must be annotated with RunContext[...]")
-                continue
-            elif not takes_ctx and _is_call_ctx(annotation):
-                errors.append("RunContext annotations can only be used with tools that take context")
-                continue
-            elif index != 0 and _is_call_ctx(annotation):
-                errors.append("RunContext annotations can only be used as the first argument")
-                continue
 
         field_name = p.name
         if p.kind == Parameter.VAR_KEYWORD:
@@ -249,52 +234,42 @@ def function_schema(  # noqa: C901
         single_arg_name=single_arg_name,
         positional_fields=positional_fields,
         var_positional_field=var_positional_field,
-        takes_ctx=takes_ctx,
+        ctx_param=ctx_param,
         is_async=is_async_callable(function),
         function=function,
     )
 
 
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-WithCtx = Callable[Concatenate[RunContext[Any], P], R]
-WithoutCtx = Callable[P, R]
-TargetCallable = WithCtx[P, R] | WithoutCtx[P, R]
-
-
-def _takes_ctx(callable_obj: TargetCallable[P, R]) -> TypeIs[WithCtx[P, R]]:
-    """Check if a callable takes a `RunContext` first argument.
+def _find_ctx_param(callable_obj: Callable[..., Any]) -> str | None:
+    """Find the parameter name that takes a `RunContext` argument.
 
     Args:
         callable_obj: The callable to check.
 
     Returns:
-        `True` if the callable takes a `RunContext` as first argument, `False` otherwise.
+        The parameter name that takes a `RunContext`, or `None` if no such parameter exists.
     """
     try:
         sig = signature(callable_obj)
     except ValueError:
-        return False
-    try:
-        first_param_name = next(iter(sig.parameters.keys()))
-    except StopIteration:
-        return False
-    else:
-        # See https://github.com/pydantic/pydantic/pull/11451 for a similar implementation in Pydantic
-        if not isinstance(callable_obj, _decorators._function_like):  # pyright: ignore[reportPrivateUsage]
-            call_func = getattr(type(callable_obj), "__call__", None)
-            if call_func is not None:
-                callable_obj = call_func
-            else:
-                return False  # pragma: no cover
+        return None
 
-        type_hints = _typing_extra.get_function_type_hints(_decorators.unwrap_wrapped_function(callable_obj))
-        annotation = type_hints.get(first_param_name)
-        if annotation is None:
-            return False
-        return True is not sig.empty and _is_call_ctx(annotation)
+    # See https://github.com/pydantic/pydantic/pull/11451 for a similar implementation in Pydantic
+    if not isinstance(callable_obj, _decorators._function_like):  # pyright: ignore[reportPrivateUsage]
+        call_func = getattr(type(callable_obj), "__call__", None)
+        if call_func is not None:
+            callable_obj = call_func
+        else:
+            return None  # pragma: no cover
+
+    type_hints = _typing_extra.get_function_type_hints(_decorators.unwrap_wrapped_function(callable_obj))
+
+    for param_name in sig.parameters:
+        annotation = type_hints.get(param_name)
+        if annotation is not None and _is_call_ctx(annotation):
+            return param_name
+
+    return None
 
 
 def _build_schema(
