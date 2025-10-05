@@ -179,12 +179,18 @@ source = { editable = "src/mcp-client" }
 dependencies = [
     { name = "click" },
     { name = "httpx" },
+    { name = "mcp-types" },
+    { name = "pydantic" },
+    { name = "starlette" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "click" },
     { name = "httpx" },
+    { name = "mcp-types", editable = "src/mcp-types" },
+    { name = "pydantic" },
+    { name = "starlette" },
 ]
 
 [[package]]

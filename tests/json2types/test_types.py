@@ -103,7 +103,8 @@ class RequiredTest(TypedDict):
     }""",
             snapshot("""\
 from pydantic import Field
-from typing_extensions import TypedDict, NotRequired, Annotated
+from typing import Annotated
+from typing_extensions import TypedDict, NotRequired
 
 class Person(TypedDict):
     first_name: Annotated[str, Field(alias='firstName')]
@@ -132,7 +133,8 @@ class Company(TypedDict):
     }""",
             snapshot("""\
 from pydantic import Field
-from typing_extensions import TypedDict, NotRequired, Annotated
+from typing import Annotated
+from typing_extensions import TypedDict, NotRequired
 
 class NamingTest(TypedDict):
     first_name: Annotated[NotRequired[str], Field(alias='firstName')]
@@ -197,7 +199,8 @@ class UserProfile(TypedDict):
     }""",
             snapshot("""\
 from pydantic import Field
-from typing_extensions import TypedDict, NotRequired, Annotated
+from typing import Annotated
+from typing_extensions import TypedDict, NotRequired
 
 class Address(TypedDict):
     street: str
@@ -215,6 +218,134 @@ class User(TypedDict):
     preferences: NotRequired[Preferences]\
 """),
             id="nested-objects",
+        ),
+        pytest.param(
+            """{
+      "type": "object",
+      "title": "Arguments",
+      "properties": {},
+      "additionalProperties": true
+    }""",
+            snapshot("""\
+from pydantic import with_config
+from typing_extensions import TypedDict
+
+@with_config(extra='allow')
+class Arguments(TypedDict):
+    pass\
+"""),
+            id="additional-properties",
+        ),
+        pytest.param(
+            """{
+      "type": "object",
+      "title": "Config",
+      "properties": {
+        "name": {"type": "string"},
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "version": {"type": "string"}
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": ["name"]
+    }""",
+            snapshot("""\
+from pydantic import with_config
+from typing_extensions import TypedDict, NotRequired
+
+@with_config(extra='allow')
+class Metadata(TypedDict):
+    version: NotRequired[str]
+
+class Config(TypedDict):
+    name: str
+    metadata: NotRequired[Metadata]\
+"""),
+            id="nested-additional-properties",
+        ),
+        pytest.param(
+            """{
+      "type": "object",
+      "title": "DynamicArgs",
+      "properties": {},
+      "additionalProperties": {}
+    }""",
+            snapshot("""\
+from pydantic import with_config
+from typing_extensions import TypedDict
+
+@with_config(extra='allow')
+class DynamicArgs(TypedDict):
+    pass\
+"""),
+            id="additional-properties-empty-schema",
+        ),
+        pytest.param(
+            """{
+      "type": "object",
+      "title": "Message",
+      "properties": {
+        "content": {
+          "anyOf": [
+            {"$ref": "#/$defs/TextContent"},
+            {"$ref": "#/$defs/ImageContent"},
+            {"$ref": "#/$defs/AudioContent"}
+          ]
+        },
+        "role": {"type": "string"}
+      },
+      "required": ["content", "role"],
+      "$defs": {
+        "TextContent": {
+          "type": "object",
+          "properties": {
+            "text": {"type": "string"},
+            "type": {"type": "string", "const": "text"}
+          },
+          "required": ["text", "type"]
+        },
+        "ImageContent": {
+          "type": "object",
+          "properties": {
+            "data": {"type": "string"},
+            "type": {"type": "string", "const": "image"}
+          },
+          "required": ["data", "type"]
+        },
+        "AudioContent": {
+          "type": "object",
+          "properties": {
+            "data": {"type": "string"},
+            "type": {"type": "string", "const": "audio"}
+          },
+          "required": ["data", "type"]
+        }
+      }
+    }""",
+            snapshot("""\
+from typing import Literal
+from typing_extensions import TypedDict
+
+class TextContent(TypedDict):
+    text: str
+    type: Literal['text']
+
+class ImageContent(TypedDict):
+    data: str
+    type: Literal['image']
+
+class AudioContent(TypedDict):
+    data: str
+    type: Literal['audio']
+
+class Message(TypedDict):
+    content: TextContent | ImageContent | AudioContent
+    role: str\
+"""),
+            id="anyOf-union",
         ),
     ],
 )

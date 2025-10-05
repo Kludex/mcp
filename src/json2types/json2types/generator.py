@@ -153,6 +153,17 @@ class TypeGenerator:
             # Remove $defs to avoid infinite recursion
             schema = {k: v for k, v in schema.items() if k != "$defs"}
 
+        # Handle anyOf for union types
+        if "anyOf" in schema:
+            any_of_schemas = schema["anyOf"]
+            if any_of_schemas:
+                types: list[ast.expr] = []
+                for sub_schema in any_of_schemas:
+                    types.append(self._process_schema(sub_schema, context_name))
+                if len(types) == 1:
+                    return types[0]
+                return self._create_union(types)
+
         # Handle $ref references
         if "$ref" in schema:
             ref_uri = schema["$ref"]
@@ -239,7 +250,7 @@ class TypeGenerator:
 
             # Add Field annotation for alias
             if field_name != prop_name:
-                self.imports.add("typing_extensions")
+                self.imports.add("typing")
                 self.imports.add("pydantic")
 
                 field_call = self._create_field_call(prop_name)
@@ -255,9 +266,25 @@ class TypeGenerator:
         self.imports.add("typing_extensions")
         bases: list[ast.expr] = [ast.Name(id="TypedDict", ctx=ast.Load())]
 
+        # Check if additionalProperties is true or an object schema
+        additional_properties = schema.get("additionalProperties")
+        decorator_list: list[ast.expr] = []
+        if additional_properties is True or isinstance(additional_properties, dict):
+            self.imports.add("pydantic")
+            # Create @with_config(extra="allow") decorator
+            decorator_list.append(
+                ast.Call(
+                    func=ast.Name(id="with_config", ctx=ast.Load()),
+                    args=[],
+                    keywords=[ast.keyword(arg="extra", value=ast.Constant(value="allow"))],
+                )
+            )
+
         # Create class node
         body_nodes: list[ast.stmt] = annotations if annotations else [ast.Pass()]
-        class_node = ast.ClassDef(name=unique_title, bases=bases, keywords=[], decorator_list=[], body=body_nodes)
+        class_node = ast.ClassDef(
+            name=unique_title, bases=bases, keywords=[], decorator_list=decorator_list, body=body_nodes
+        )
 
         self.class_nodes.append(class_node)
         return ast.Name(id=unique_title, ctx=ast.Load())
@@ -273,7 +300,7 @@ class TypeGenerator:
         # Handle const values as Literal types
         if "const" in schema:
             const_value = schema["const"]
-            self.imports.add("typing_extensions")  # for Literal
+            self.imports.add("typing")  # for Literal
             return self._create_subscript("Literal", [ast.Constant(value=const_value)])
 
         type_mapping = {"string": "str", "number": "float", "integer": "int", "boolean": "bool", "null": "None"}
@@ -341,15 +368,27 @@ class TypeGenerator:
                     names.append(ast.alias(name="TypedDict"))
                 if "NotRequired" in code_str:
                     names.append(ast.alias(name="NotRequired"))
+
+                if names:
+                    import_nodes.append(ast.ImportFrom(module="typing_extensions", names=names, level=0))
+            elif module == "typing":
+                names = []
                 if "Annotated" in code_str:
                     names.append(ast.alias(name="Annotated"))
                 if "Literal" in code_str:
                     names.append(ast.alias(name="Literal"))
 
                 if names:
-                    import_nodes.append(ast.ImportFrom(module="typing_extensions", names=names, level=0))
+                    import_nodes.append(ast.ImportFrom(module="typing", names=names, level=0))
             elif module == "pydantic":
-                import_nodes.append(ast.ImportFrom(module="pydantic", names=[ast.alias(name="Field")], level=0))
+                names = []
+                if "Field" in code_str:
+                    names.append(ast.alias(name="Field"))
+                if "with_config" in code_str:
+                    names.append(ast.alias(name="with_config"))
+
+                if names:
+                    import_nodes.append(ast.ImportFrom(module="pydantic", names=names, level=0))
 
         # Add Any import if needed
         if "Any" in code_str:

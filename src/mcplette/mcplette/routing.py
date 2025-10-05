@@ -2,20 +2,22 @@ from __future__ import annotations as _annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import KW_ONLY, dataclass, field
-from typing import Any, ParamSpec, TypeAlias, overload
+from typing import Any, ParamSpec, TypeAlias, cast, overload
 
-from mcp_types import CallToolResult
+from mcp_types import AudioContent, CallToolResult, EmbeddedResource, ImageContent, ResourceLink, TextContent
 from mcp_types import Params as CallToolParams
 from pydantic import TypeAdapter
 from pydantic.json_schema import GenerateJsonSchema
 from starlette.requests import Request
 from starlette.responses import Response
 
+from ._context import RunContext
 from ._function_schema import DocstringFormat, FunctionSchema, function_schema
 from ._function_schema._json_schema import GenerateToolJsonSchema
 
 ta_call_tool_params = TypeAdapter(CallToolParams)
 ta_call_tool_result = TypeAdapter(CallToolResult)
+ta_content_block = TypeAdapter(list[TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource])
 
 ToolParams = ParamSpec("ToolParams", default=...)
 
@@ -34,9 +36,10 @@ class MCPRouter:
         self.resources = list(resources)
         self.prompts = list(prompts)
 
-    def add_tool(self, name: str, handler: Callable[..., object], *, description: str | None = None) -> None:
-        tool = Tool(name, handler, description=description)
-        self.tools.append(tool)
+    def add_tool(
+        self, handler: Callable[..., object], *, name: str | None = None, description: str | None = None
+    ) -> None:
+        self.tools.append(Tool(handler, name=name, description=description))
 
     def add_resource(
         self,
@@ -64,14 +67,27 @@ class MCPRouter:
     # Decorators
 
     @overload
-    def tool(self) -> Callable[[Func[ToolParams]], Func[ToolParams]]: ...
+    def tool(self, func: Func[ToolParams], /) -> Func[ToolParams]: ...
 
     @overload
-    def tool(self, func: Func[ToolParams]) -> Func[ToolParams]: ...
+    def tool(
+        self,
+        /,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Callable[[Func[ToolParams]], Func[ToolParams]]: ...
 
-    def tool(self, func: Func[ToolParams] | None = None, *, name: str | None = None) -> Any:
+    def tool(
+        self,
+        func: Func[ToolParams] | None = None,
+        /,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Any:
         def tool_decorator(func_: Func[ToolParams]) -> Func[ToolParams]:
-            self.tools.append(Tool(name=name, function=func_))
+            self.add_tool(func_, name=name, description=description)
             return func_
 
         return tool_decorator if func is None else tool_decorator(func)
@@ -90,15 +106,21 @@ class MCPRouter:
         tool_name = request.path_params["tool_name"]
         _ = request.path_params["tool_call_id"]
 
-        params = ta_call_tool_params.validate_json(await request.body())
+        body = await request.body()
+        # TODO(Marcelo): This is ugly.
+        params = cast(dict[str, Any], ta_call_tool_params.validate_json(body))
 
         # TODO(Marcelo): Create a smarter routing.
         for tool in self.tools:
             if tool.name == tool_name:
-                result = await tool(params)
-                return Response(content=result, status_code=200)
+                result = await tool.function_schema.call(params.get("arguments", {}), RunContext())
+                content = self._result_to_content(result)
+                return Response(content=content, status_code=200)
 
         return Response(status_code=404)
+
+    def _result_to_content(self, result: Any) -> bytes:
+        return ta_call_tool_result.dump_json({"content": [TextContent(text=str(result), type="text")]})
 
 
 @dataclass(init=False, slots=True)

@@ -1,5 +1,5 @@
 from inline_snapshot import snapshot
-from starlette.testclient import TestClient
+from mcp_client import MCPClient
 
 from mcplette.applications import MCP
 
@@ -11,7 +11,6 @@ def test_mcp_init():
     async def sum(a: int, b: int) -> int:
         return a + b
 
-    client = TestClient(mcp)
-    response = client.put("/tools/sum/calls/1")
-    assert response.status_code == 200
-    assert response.json() == {"result": 3}
+    client = MCPClient(mcp)
+    response = client.call_tool("sum", {"a": 1, "b": 2})  # type: ignore
+    assert response == snapshot({"content": [{"text": "3", "type": "text"}]})

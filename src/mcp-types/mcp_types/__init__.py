@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import Field
-from typing_extensions import Annotated, Literal, NotRequired, TypedDict
+from pydantic import Field, with_config
+from typing_extensions import NotRequired, TypedDict
 
 
 class Annotations(TypedDict):
@@ -10,6 +10,7 @@ class Annotations(TypedDict):
     priority: NotRequired[float]
 
 
+@with_config(extra="allow")
 class Meta(TypedDict):
     pass
 
@@ -27,6 +28,7 @@ class BaseMetadata(TypedDict):
     title: NotRequired[str]
 
 
+@with_config(extra="allow")
 class BlobResourceContentsMeta(TypedDict):
     pass
 
@@ -45,6 +47,7 @@ class BooleanSchema(TypedDict):
     type: Literal["boolean"]
 
 
+@with_config(extra="allow")
 class Arguments(TypedDict):
     pass
 
@@ -59,17 +62,70 @@ class CallToolRequest(TypedDict):
     params: Params
 
 
+@with_config(extra="allow")
 class CallToolResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
+class ContentBlockMeta(TypedDict):
+    pass
+
+
+class TextContent(TypedDict):
+    _meta: NotRequired[ContentBlockMeta]
+    annotations: NotRequired[Annotations]
+    text: str
+    type: Literal["text"]
+
+
+class ImageContent(TypedDict):
+    _meta: NotRequired[ContentBlockMeta]
+    annotations: NotRequired[Annotations]
+    data: str
+    mime_type: Annotated[str, Field(alias="mimeType")]
+    type: Literal["image"]
+
+
+class ResourceLink(TypedDict):
+    _meta: NotRequired[ContentBlockMeta]
+    annotations: NotRequired[Annotations]
+    description: NotRequired[str]
+    mime_type: Annotated[NotRequired[str], Field(alias="mimeType")]
+    name: str
+    size: NotRequired[int]
+    title: NotRequired[str]
+    type: Literal["resource_link"]
+    uri: str
+
+
+@with_config(extra="allow")
+class ResourceMeta(TypedDict):
+    pass
+
+
+class TextResourceContents(TypedDict):
+    _meta: NotRequired[ResourceMeta]
+    mime_type: Annotated[NotRequired[str], Field(alias="mimeType")]
+    text: str
+    uri: str
+
+
+class EmbeddedResource(TypedDict):
+    _meta: NotRequired[ContentBlockMeta]
+    annotations: NotRequired[Annotations]
+    resource: TextResourceContents | BlobResourceContents
+    type: Literal["resource"]
+
+
+@with_config(extra="allow")
 class StructuredContent(TypedDict):
     pass
 
 
 class CallToolResult(TypedDict):
     _meta: NotRequired[CallToolResultMeta]
-    content: list[Any]
+    content: list[TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource]
     is_error: Annotated[NotRequired[bool], Field(alias="isError")]
     structured_content: Annotated[NotRequired[StructuredContent], Field(alias="structuredContent")]
 
@@ -84,10 +140,12 @@ class CancelledNotification(TypedDict):
     params: CancelledNotificationParams
 
 
+@with_config(extra="allow")
 class Elicitation(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class Experimental(TypedDict):
     pass
 
@@ -96,6 +154,7 @@ class Roots(TypedDict):
     list_changed: Annotated[NotRequired[bool], Field(alias="listChanged")]
 
 
+@with_config(extra="allow")
 class Sampling(TypedDict):
     pass
 
@@ -107,11 +166,154 @@ class ClientCapabilities(TypedDict):
     sampling: NotRequired[Sampling]
 
 
+@with_config(extra="allow")
+class ParamsMeta(TypedDict):
+    pass
+
+
+@with_config(extra="allow")
+class ClientNotificationParams(TypedDict):
+    _meta: NotRequired[ParamsMeta]
+
+
+class InitializedNotification(TypedDict):
+    method: Literal["notifications/initialized"]
+    params: NotRequired[ClientNotificationParams]
+
+
+class ProgressNotification(TypedDict):
+    method: Literal["notifications/progress"]
+    params: ClientNotificationParams
+
+
+class RootsListChangedNotification(TypedDict):
+    method: Literal["notifications/roots/list_changed"]
+    params: NotRequired[ClientNotificationParams]
+
+
+class Implementation(TypedDict):
+    name: str
+    title: NotRequired[str]
+    version: str
+
+
+class ClientRequestParams(TypedDict):
+    capabilities: ClientCapabilities
+    client_info: Annotated[Implementation, Field(alias="clientInfo")]
+    protocol_version: Annotated[str, Field(alias="protocolVersion")]
+
+
+class InitializeRequest(TypedDict):
+    method: Literal["initialize"]
+    params: ClientRequestParams
+
+
+class PingRequest(TypedDict):
+    method: Literal["ping"]
+    params: NotRequired[ClientRequestParams]
+
+
+class ListResourcesRequest(TypedDict):
+    method: Literal["resources/list"]
+    params: NotRequired[ClientRequestParams]
+
+
+class ListResourceTemplatesRequest(TypedDict):
+    method: Literal["resources/templates/list"]
+    params: NotRequired[ClientRequestParams]
+
+
+class ReadResourceRequest(TypedDict):
+    method: Literal["resources/read"]
+    params: ClientRequestParams
+
+
+class SubscribeRequest(TypedDict):
+    method: Literal["resources/subscribe"]
+    params: ClientRequestParams
+
+
+class UnsubscribeRequest(TypedDict):
+    method: Literal["resources/unsubscribe"]
+    params: ClientRequestParams
+
+
+class ListPromptsRequest(TypedDict):
+    method: Literal["prompts/list"]
+    params: NotRequired[ClientRequestParams]
+
+
+class GetPromptRequest(TypedDict):
+    method: Literal["prompts/get"]
+    params: ClientRequestParams
+
+
+class ListToolsRequest(TypedDict):
+    method: Literal["tools/list"]
+    params: NotRequired[ClientRequestParams]
+
+
+class SetLevelRequest(TypedDict):
+    method: Literal["logging/setLevel"]
+    params: ClientRequestParams
+
+
+class CompleteRequest(TypedDict):
+    method: Literal["completion/complete"]
+    params: ClientRequestParams
+
+
+@with_config(extra="allow")
+class ClientResultMeta(TypedDict):
+    pass
+
+
+@with_config(extra="allow")
+class Result(TypedDict):
+    _meta: NotRequired[ClientResultMeta]
+
+
+class CreateMessageResult(TypedDict):
+    _meta: NotRequired[ClientResultMeta]
+    content: TextContent | ImageContent | AudioContent
+    model: str
+    role: str
+    stop_reason: Annotated[NotRequired[str], Field(alias="stopReason")]
+
+
+@with_config(extra="allow")
+class RootsMeta(TypedDict):
+    pass
+
+
+class Root(TypedDict):
+    _meta: NotRequired[RootsMeta]
+    name: NotRequired[str]
+    uri: str
+
+
+class ListRootsResult(TypedDict):
+    _meta: NotRequired[ClientResultMeta]
+    roots: list[Root]
+
+
+@with_config(extra="allow")
+class Content(TypedDict):
+    pass
+
+
+class ElicitResult(TypedDict):
+    _meta: NotRequired[ClientResultMeta]
+    action: str
+    content: NotRequired[Content]
+
+
 class Argument(TypedDict):
     name: str
     value: str
 
 
+@with_config(extra="allow")
 class ContextArguments(TypedDict):
     pass
 
@@ -120,17 +322,29 @@ class Context(TypedDict):
     arguments: NotRequired[ContextArguments]
 
 
+class PromptReference(TypedDict):
+    name: str
+    title: NotRequired[str]
+    type: Literal["ref/prompt"]
+
+
+class ResourceTemplateReference(TypedDict):
+    type: Literal["ref/resource"]
+    uri: str
+
+
 class CompleteRequestParams(TypedDict):
     argument: Argument
     context: NotRequired[Context]
-    ref: Any
+    ref: PromptReference | ResourceTemplateReference
 
 
-class CompleteRequest(TypedDict):
+class ClientResultCompleteRequest(TypedDict):
     method: Literal["completion/complete"]
     params: CompleteRequestParams
 
 
+@with_config(extra="allow")
 class CompleteResultMeta(TypedDict):
     pass
 
@@ -147,10 +361,11 @@ class CompleteResult(TypedDict):
 
 
 class SamplingMessage(TypedDict):
-    content: Any
+    content: TextContent | ImageContent | AudioContent
     role: str
 
 
+@with_config(extra="allow")
 class Metadata(TypedDict):
     pass
 
@@ -182,18 +397,20 @@ class CreateMessageRequest(TypedDict):
     params: CreateMessageRequestParams
 
 
+@with_config(extra="allow")
 class CreateMessageResultMeta(TypedDict):
     pass
 
 
-class CreateMessageResult(TypedDict):
+class ModelPreferencesCreateMessageResult(TypedDict):
     _meta: NotRequired[CreateMessageResultMeta]
-    content: Any
+    content: TextContent | ImageContent | AudioContent
     model: str
     role: str
     stop_reason: Annotated[NotRequired[str], Field(alias="stopReason")]
 
 
+@with_config(extra="allow")
 class Properties(TypedDict):
     pass
 
@@ -214,37 +431,32 @@ class ElicitRequest(TypedDict):
     params: ElicitRequestParams
 
 
+@with_config(extra="allow")
 class ElicitResultMeta(TypedDict):
     pass
 
 
-class Content(TypedDict):
+@with_config(extra="allow")
+class ElicitResultContent(TypedDict):
     pass
 
 
-class ElicitResult(TypedDict):
+class RoleElicitResult(TypedDict):
     _meta: NotRequired[ElicitResultMeta]
     action: str
-    content: NotRequired[Content]
+    content: NotRequired[ElicitResultContent]
 
 
+@with_config(extra="allow")
 class EmbeddedResourceMeta(TypedDict):
     pass
 
 
-class EmbeddedResource(TypedDict):
+class RoleEmbeddedResource(TypedDict):
     _meta: NotRequired[EmbeddedResourceMeta]
     annotations: NotRequired[Annotations]
-    resource: Any
+    resource: TextResourceContents | BlobResourceContents
     type: Literal["resource"]
-
-
-class EmptyResultMeta(TypedDict):
-    pass
-
-
-class Result(TypedDict):
-    _meta: NotRequired[EmptyResultMeta]
 
 
 class EnumSchema(TypedDict):
@@ -255,6 +467,7 @@ class EnumSchema(TypedDict):
     type: Literal["string"]
 
 
+@with_config(extra="allow")
 class ParamsArguments(TypedDict):
     pass
 
@@ -264,17 +477,18 @@ class GetPromptRequestParams(TypedDict):
     name: str
 
 
-class GetPromptRequest(TypedDict):
+class EmptyResultGetPromptRequest(TypedDict):
     method: Literal["prompts/get"]
     params: GetPromptRequestParams
 
 
+@with_config(extra="allow")
 class GetPromptResultMeta(TypedDict):
     pass
 
 
 class PromptMessage(TypedDict):
-    content: Any
+    content: TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource
     role: str
 
 
@@ -284,11 +498,12 @@ class GetPromptResult(TypedDict):
     messages: list[PromptMessage]
 
 
+@with_config(extra="allow")
 class ImageContentMeta(TypedDict):
     pass
 
 
-class ImageContent(TypedDict):
+class RoleImageContent(TypedDict):
     _meta: NotRequired[ImageContentMeta]
     annotations: NotRequired[Annotations]
     data: str
@@ -296,7 +511,7 @@ class ImageContent(TypedDict):
     type: Literal["image"]
 
 
-class Implementation(TypedDict):
+class AnnotationsImplementation(TypedDict):
     name: str
     title: NotRequired[str]
     version: str
@@ -308,23 +523,27 @@ class InitializeRequestParams(TypedDict):
     protocol_version: Annotated[str, Field(alias="protocolVersion")]
 
 
-class InitializeRequest(TypedDict):
+class AnnotationsInitializeRequest(TypedDict):
     method: Literal["initialize"]
     params: InitializeRequestParams
 
 
+@with_config(extra="allow")
 class InitializeResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class Completions(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class CapabilitiesExperimental(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class Logging(TypedDict):
     pass
 
@@ -359,15 +578,12 @@ class InitializeResult(TypedDict):
     server_info: Annotated[Implementation, Field(alias="serverInfo")]
 
 
-class ParamsMeta(TypedDict):
-    pass
-
-
+@with_config(extra="allow")
 class InitializedNotificationParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
 
-class InitializedNotification(TypedDict):
+class ServerInfoInitializedNotification(TypedDict):
     method: Literal["notifications/initialized"]
     params: NotRequired[InitializedNotificationParams]
 
@@ -384,16 +600,7 @@ class JSONRPCError(TypedDict):
     jsonrpc: Literal["2.0"]
 
 
-class JSONRPCNotificationParams(TypedDict):
-    _meta: NotRequired[ParamsMeta]
-
-
-class JSONRPCNotification(TypedDict):
-    jsonrpc: Literal["2.0"]
-    method: str
-    params: NotRequired[JSONRPCNotificationParams]
-
-
+@with_config(extra="allow")
 class IdParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
@@ -405,7 +612,42 @@ class JSONRPCRequest(TypedDict):
     params: NotRequired[IdParams]
 
 
+@with_config(extra="allow")
+class JSONRPCMessageParams(TypedDict):
+    _meta: NotRequired[ParamsMeta]
+
+
+class JSONRPCNotification(TypedDict):
+    jsonrpc: Literal["2.0"]
+    method: str
+    params: NotRequired[JSONRPCMessageParams]
+
+
 class JSONRPCResponse(TypedDict):
+    id: str | int
+    jsonrpc: Literal["2.0"]
+    result: Result
+
+
+@with_config(extra="allow")
+class JSONRPCNotificationParams(TypedDict):
+    _meta: NotRequired[ParamsMeta]
+
+
+class JSONRPCMessageJSONRPCNotification(TypedDict):
+    jsonrpc: Literal["2.0"]
+    method: str
+    params: NotRequired[JSONRPCNotificationParams]
+
+
+class JSONRPCMessageJSONRPCRequest(TypedDict):
+    id: str | int
+    jsonrpc: Literal["2.0"]
+    method: str
+    params: NotRequired[IdParams]
+
+
+class IdJSONRPCResponse(TypedDict):
     id: str | int
     jsonrpc: Literal["2.0"]
     result: Result
@@ -415,15 +657,17 @@ class ListPromptsRequestParams(TypedDict):
     cursor: NotRequired[str]
 
 
-class ListPromptsRequest(TypedDict):
+class ResultListPromptsRequest(TypedDict):
     method: Literal["prompts/list"]
     params: NotRequired[ListPromptsRequestParams]
 
 
+@with_config(extra="allow")
 class ListPromptsResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class PromptsMeta(TypedDict):
     pass
 
@@ -453,15 +697,17 @@ class ListResourceTemplatesRequestParams(TypedDict):
     cursor: NotRequired[str]
 
 
-class ListResourceTemplatesRequest(TypedDict):
+class ResultListResourceTemplatesRequest(TypedDict):
     method: Literal["resources/templates/list"]
     params: NotRequired[ListResourceTemplatesRequestParams]
 
 
+@with_config(extra="allow")
 class ListResourceTemplatesResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class ResourceTemplatesMeta(TypedDict):
     pass
 
@@ -486,15 +732,17 @@ class ListResourcesRequestParams(TypedDict):
     cursor: NotRequired[str]
 
 
-class ListResourcesRequest(TypedDict):
+class AnnotationsListResourcesRequest(TypedDict):
     method: Literal["resources/list"]
     params: NotRequired[ListResourcesRequestParams]
 
 
+@with_config(extra="allow")
 class ListResourcesResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class ResourcesMeta(TypedDict):
     pass
 
@@ -516,6 +764,7 @@ class ListResourcesResult(TypedDict):
     resources: list[Resource]
 
 
+@with_config(extra="allow")
 class ListRootsRequestParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
@@ -525,21 +774,12 @@ class ListRootsRequest(TypedDict):
     params: NotRequired[ListRootsRequestParams]
 
 
+@with_config(extra="allow")
 class ListRootsResultMeta(TypedDict):
     pass
 
 
-class RootsMeta(TypedDict):
-    pass
-
-
-class Root(TypedDict):
-    _meta: NotRequired[RootsMeta]
-    name: NotRequired[str]
-    uri: str
-
-
-class ListRootsResult(TypedDict):
+class AnnotationsListRootsResult(TypedDict):
     _meta: NotRequired[ListRootsResultMeta]
     roots: list[Root]
 
@@ -548,15 +788,17 @@ class ListToolsRequestParams(TypedDict):
     cursor: NotRequired[str]
 
 
-class ListToolsRequest(TypedDict):
+class AnnotationsListToolsRequest(TypedDict):
     method: Literal["tools/list"]
     params: NotRequired[ListToolsRequestParams]
 
 
+@with_config(extra="allow")
 class ListToolsResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class ToolsMeta(TypedDict):
     pass
 
@@ -569,6 +811,7 @@ class ToolAnnotations(TypedDict):
     title: NotRequired[str]
 
 
+@with_config(extra="allow")
 class InputSchemaProperties(TypedDict):
     pass
 
@@ -579,6 +822,7 @@ class InputSchema(TypedDict):
     type: Literal["object"]
 
 
+@with_config(extra="allow")
 class OutputSchemaProperties(TypedDict):
     pass
 
@@ -627,6 +871,7 @@ class LevelModelPreferences(TypedDict):
     speed_priority: Annotated[NotRequired[float], Field(alias="speedPriority")]
 
 
+@with_config(extra="allow")
 class NotificationParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
@@ -653,6 +898,7 @@ class PaginatedRequest(TypedDict):
     params: NotRequired[PaginatedRequestParams]
 
 
+@with_config(extra="allow")
 class PaginatedResultMeta(TypedDict):
     pass
 
@@ -662,13 +908,23 @@ class PaginatedResult(TypedDict):
     next_cursor: Annotated[NotRequired[str], Field(alias="nextCursor")]
 
 
+@with_config(extra="allow")
 class PingRequestParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
 
-class PingRequest(TypedDict):
+class LevelPingRequest(TypedDict):
     method: Literal["ping"]
     params: NotRequired[PingRequestParams]
+
+
+class StringSchema(TypedDict):
+    description: NotRequired[str]
+    format: NotRequired[str]
+    max_length: Annotated[NotRequired[int], Field(alias="maxLength")]
+    min_length: Annotated[NotRequired[int], Field(alias="minLength")]
+    title: NotRequired[str]
+    type: Literal["string"]
 
 
 class ProgressNotificationParams(TypedDict):
@@ -678,11 +934,12 @@ class ProgressNotificationParams(TypedDict):
     total: NotRequired[float]
 
 
-class ProgressNotification(TypedDict):
+class PrimitiveSchemaDefinitionProgressNotification(TypedDict):
     method: Literal["notifications/progress"]
     params: ProgressNotificationParams
 
 
+@with_config(extra="allow")
 class PromptMeta(TypedDict):
     pass
 
@@ -702,6 +959,7 @@ class ProgressTokenPromptArgument(TypedDict):
     title: NotRequired[str]
 
 
+@with_config(extra="allow")
 class PromptListChangedNotificationParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
@@ -712,11 +970,11 @@ class PromptListChangedNotification(TypedDict):
 
 
 class ProgressTokenPromptMessage(TypedDict):
-    content: Any
+    content: TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource
     role: str
 
 
-class PromptReference(TypedDict):
+class RolePromptReference(TypedDict):
     name: str
     title: NotRequired[str]
     type: Literal["ref/prompt"]
@@ -726,20 +984,22 @@ class ReadResourceRequestParams(TypedDict):
     uri: str
 
 
-class ReadResourceRequest(TypedDict):
+class RoleReadResourceRequest(TypedDict):
     method: Literal["resources/read"]
     params: ReadResourceRequestParams
 
 
+@with_config(extra="allow")
 class ReadResourceResultMeta(TypedDict):
     pass
 
 
 class ReadResourceResult(TypedDict):
     _meta: NotRequired[ReadResourceResultMeta]
-    contents: list[Any]
+    contents: list[TextResourceContents | BlobResourceContents]
 
 
+@with_config(extra="allow")
 class RequestParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
@@ -747,10 +1007,6 @@ class RequestParams(TypedDict):
 class Request(TypedDict):
     method: str
     params: NotRequired[RequestParams]
-
-
-class ResourceMeta(TypedDict):
-    pass
 
 
 class RoleResource(TypedDict):
@@ -764,6 +1020,7 @@ class RoleResource(TypedDict):
     uri: str
 
 
+@with_config(extra="allow")
 class ResourceContentsMeta(TypedDict):
     pass
 
@@ -774,11 +1031,12 @@ class ResourceContents(TypedDict):
     uri: str
 
 
+@with_config(extra="allow")
 class ResourceLinkMeta(TypedDict):
     pass
 
 
-class ResourceLink(TypedDict):
+class AnnotationsResourceLink(TypedDict):
     _meta: NotRequired[ResourceLinkMeta]
     annotations: NotRequired[Annotations]
     description: NotRequired[str]
@@ -790,6 +1048,7 @@ class ResourceLink(TypedDict):
     uri: str
 
 
+@with_config(extra="allow")
 class ResourceListChangedNotificationParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
@@ -799,6 +1058,7 @@ class ResourceListChangedNotification(TypedDict):
     params: NotRequired[ResourceListChangedNotificationParams]
 
 
+@with_config(extra="allow")
 class ResourceTemplateMeta(TypedDict):
     pass
 
@@ -813,7 +1073,7 @@ class AnnotationsResourceTemplate(TypedDict):
     uri_template: Annotated[str, Field(alias="uriTemplate")]
 
 
-class ResourceTemplateReference(TypedDict):
+class AnnotationsResourceTemplateReference(TypedDict):
     type: Literal["ref/resource"]
     uri: str
 
@@ -827,14 +1087,17 @@ class ResourceUpdatedNotification(TypedDict):
     params: ResourceUpdatedNotificationParams
 
 
+@with_config(extra="allow")
 class ResultMeta(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class AnnotationsResult(TypedDict):
     _meta: NotRequired[ResultMeta]
 
 
+@with_config(extra="allow")
 class RootMeta(TypedDict):
     pass
 
@@ -845,28 +1108,32 @@ class AnnotationsRoot(TypedDict):
     uri: str
 
 
+@with_config(extra="allow")
 class RootsListChangedNotificationParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
 
-class RootsListChangedNotification(TypedDict):
+class AnnotationsRootsListChangedNotification(TypedDict):
     method: Literal["notifications/roots/list_changed"]
     params: NotRequired[RootsListChangedNotificationParams]
 
 
 class AnnotationsSamplingMessage(TypedDict):
-    content: Any
+    content: TextContent | ImageContent | AudioContent
     role: str
 
 
+@with_config(extra="allow")
 class ServerCapabilitiesCompletions(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class ServerCapabilitiesExperimental(TypedDict):
     pass
 
 
+@with_config(extra="allow")
 class ServerCapabilitiesLogging(TypedDict):
     pass
 
@@ -893,16 +1160,26 @@ class RoleServerCapabilities(TypedDict):
     tools: NotRequired[ServerCapabilitiesTools]
 
 
+@with_config(extra="allow")
+class ServerNotificationParams(TypedDict):
+    _meta: NotRequired[ParamsMeta]
+
+
+class ToolListChangedNotification(TypedDict):
+    method: Literal["notifications/tools/list_changed"]
+    params: NotRequired[ServerNotificationParams]
+
+
 class SetLevelRequestParams(TypedDict):
     level: str
 
 
-class SetLevelRequest(TypedDict):
+class ServerResultSetLevelRequest(TypedDict):
     method: Literal["logging/setLevel"]
     params: SetLevelRequestParams
 
 
-class StringSchema(TypedDict):
+class LevelStringSchema(TypedDict):
     description: NotRequired[str]
     format: NotRequired[str]
     max_length: Annotated[NotRequired[int], Field(alias="maxLength")]
@@ -915,33 +1192,36 @@ class SubscribeRequestParams(TypedDict):
     uri: str
 
 
-class SubscribeRequest(TypedDict):
+class LevelSubscribeRequest(TypedDict):
     method: Literal["resources/subscribe"]
     params: SubscribeRequestParams
 
 
+@with_config(extra="allow")
 class TextContentMeta(TypedDict):
     pass
 
 
-class TextContent(TypedDict):
+class LevelTextContent(TypedDict):
     _meta: NotRequired[TextContentMeta]
     annotations: NotRequired[Annotations]
     text: str
     type: Literal["text"]
 
 
+@with_config(extra="allow")
 class TextResourceContentsMeta(TypedDict):
     pass
 
 
-class TextResourceContents(TypedDict):
+class AnnotationsTextResourceContents(TypedDict):
     _meta: NotRequired[TextResourceContentsMeta]
     mime_type: Annotated[NotRequired[str], Field(alias="mimeType")]
     text: str
     uri: str
 
 
+@with_config(extra="allow")
 class ToolMeta(TypedDict):
     pass
 
@@ -976,11 +1256,12 @@ class AnnotationsToolAnnotations(TypedDict):
     title: NotRequired[str]
 
 
+@with_config(extra="allow")
 class ToolListChangedNotificationParams(TypedDict):
     _meta: NotRequired[ParamsMeta]
 
 
-class ToolListChangedNotification(TypedDict):
+class AnnotationsToolListChangedNotification(TypedDict):
     method: Literal["notifications/tools/list_changed"]
     params: NotRequired[ToolListChangedNotificationParams]
 
@@ -989,6 +1270,6 @@ class UnsubscribeRequestParams(TypedDict):
     uri: str
 
 
-class UnsubscribeRequest(TypedDict):
+class AnnotationsUnsubscribeRequest(TypedDict):
     method: Literal["resources/unsubscribe"]
     params: UnsubscribeRequestParams

@@ -1,15 +1,14 @@
 from __future__ import annotations as _annotations
 
-from typing import Any, Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, overload
 
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
-from starlette.requests import Request
-from starlette.responses import Response
 from starlette.routing import BaseRoute
 from starlette.types import ExceptionHandler, Lifespan
 
-from .routing import MCPRouter, Prompt, Resource, Tool
+from .routing import Func, MCPRouter, Prompt, Resource, Tool, ToolParams
 
 
 class MCP(Starlette):
@@ -37,11 +36,31 @@ class MCP(Starlette):
             methods=["PUT"],
         )
 
-    def tool(self, name: str, description: str | None = None) -> ...:
-        def decorator(handler: Callable[..., object]) -> None:
-            self.mcp_router.add_tool(name, handler, description=description)
+    @overload
+    def tool(self, func: Func[ToolParams], /) -> Func[ToolParams]: ...
 
-        return decorator
+    @overload
+    def tool(
+        self,
+        /,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Callable[[Func[ToolParams]], Func[ToolParams]]: ...
+
+    def tool(
+        self,
+        func: Func[ToolParams] | None = None,
+        /,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Any:
+        def tool_decorator(func_: Func[ToolParams]) -> Func[ToolParams]:
+            self.mcp_router.add_tool(func_, name=name, description=description)
+            return func_
+
+        return tool_decorator if func is None else tool_decorator(func)
 
     def resource(
         self, uri: str, name: str | None = None, description: str | None = None, mime_type: str | None = None

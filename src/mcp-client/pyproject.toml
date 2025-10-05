@@ -16,7 +16,8 @@ dynamic = ["version"]
 description = "The MCP HTTP REST client implementation!"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["httpx", "click"]
+# TODO(Marcelo): Use the dynamic versioning for mcp-types.
+dependencies = ["httpx", "click", "mcp-types", "starlette", "pydantic"]
 
 [project.scripts]
 mcp-client = "mcp_client.cli:main"
