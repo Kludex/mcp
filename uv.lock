@@ -174,6 +174,7 @@ wheels = [
 
 [[package]]
 name = "monorepo"
+version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "json2types" },

@@ -103,7 +103,8 @@ class RequiredTest(TypedDict):
     }""",
             snapshot("""\
 from pydantic import Field
-from typing_extensions import TypedDict, NotRequired, Annotated
+from typing import Annotated
+from typing_extensions import TypedDict, NotRequired
 
 class Person(TypedDict):
     first_name: Annotated[str, Field(alias='firstName')]
@@ -132,7 +133,8 @@ class Company(TypedDict):
     }""",
             snapshot("""\
 from pydantic import Field
-from typing_extensions import TypedDict, NotRequired, Annotated
+from typing import Annotated
+from typing_extensions import TypedDict, NotRequired
 
 class NamingTest(TypedDict):
     first_name: Annotated[NotRequired[str], Field(alias='firstName')]
@@ -197,7 +199,8 @@ class UserProfile(TypedDict):
     }""",
             snapshot("""\
 from pydantic import Field
-from typing_extensions import TypedDict, NotRequired, Annotated
+from typing import Annotated
+from typing_extensions import TypedDict, NotRequired
 
 class Address(TypedDict):
     street: str

@@ -11,9 +11,7 @@ import pytest
 
 from json2types import generate_types
 
-MCP_SCHEMA_URL = (
-    "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/main/schema/2025-06-18/schema.json"
-)
+MCP_SCHEMA_URL = "https://raw.githubusercontent.com/modelcontextprotocol/modelcontextprotocol/refs/heads/main/schema/2025-11-25/schema.json"
 MCP_TYPES_PATH = Path(__file__).parent.parent / "src" / "mcp-types" / "mcp_types" / "__init__.py"
 
 
@@ -60,7 +58,8 @@ def test_mcp_types_up_to_date() -> None:
         existing_schema = mcp_schema_path.read_text()
         # Compare the existing schema with the downloaded schema
         if existing_schema != schema_json:
-            pytest.fail("mcp_schema.json is out of date. Please update it.")
+            mcp_schema_path.write_text(schema_json)
+            pytest.fail("mcp_schema.json was out of date. It has been updated.")
 
     # Generate types using json2types
     generated_types = generate_types(schema_json)
