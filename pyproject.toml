@@ -27,6 +27,7 @@ members = [
     "src/json2types",
     "src/mcp-types",
     "src/mcplette",
+    "src/mcp-client",
 ]
 
 [tool.uv]
@@ -35,12 +36,32 @@ required-version = ">=0.8.4"
 
 [tool.ruff]
 line-length = 120
+include = [
+    "src/json2types/**/*.py",
+    "src/mcp-types/**/*.py",
+    "src/mcplette/**/*.py",
+    "src/mcp-client/**/*.py",
+]
 
 [tool.ruff.lint]
-select = ["I", ]
+select = ["E", "F", "I", "FA"]
+ignore = ["B904", "B028", "F841", "E741"]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+split-on-trailing-comma = false
 
 [tool.pyright]
 typeCheckingMode = "strict"
+include = [
+    "src/json2types",
+    "src/mcp-types",
+    "src/mcplette",
+    "src/mcp-client",
+]
 
 [tool.inline-snapshot]
 format-command = ""
