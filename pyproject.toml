@@ -55,6 +55,7 @@ combine-as-imports = true
 split-on-trailing-comma = false
 
 [tool.pyright]
+pythonVersion = "3.10"
 typeCheckingMode = "strict"
 include = [
     "src/json2types",
