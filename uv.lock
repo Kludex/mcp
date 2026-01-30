@@ -6,6 +6,7 @@ requires-python = ">=3.10"
 members = [
     "json2types",
     "mcp-types",
+    "mcplette",
     "monorepo",
 ]
 
@@ -31,6 +32,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f1/b4/636b3b65173d3ce9a38ef5f0522789614e590dab6a8d505340a4efe4c567/anyio-4.10.0.tar.gz", hash = "sha256:3f3fae35c96039744587aa5b8371e7e8e603c0702999535961dd336026973ba6", size = 213252, upload-time = "2025-08-04T08:54:26.451Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/12/e5e0282d673bb9746bacfb6e2dba8719989d3660cdb2ea79aee9a9651afb/anyio-4.10.0-py3-none-any.whl", hash = "sha256:60e474ac86736bbfd6f210f7a61218939c318f43f9972497381f1c5e930ed3d1", size = 107213, upload-time = "2025-08-04T08:54:24.882Z" },
+]
+
+[[package]]
+name = "asgi-types"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/cd/15c24137c074f2da0fa748209b943ee860fd8419c910a765bc02ea42aa21/asgi_types-0.2.0.tar.gz", hash = "sha256:f465db9a4e877ebe876e7e2334ec02d7740dd83a86d683f2f43f9ca786ce1fd8", size = 25477, upload-time = "2026-01-29T20:42:16.94Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4a/05/4d33b1ffbcf4f15457354bbd9567f4e86abf8ebf68dd975559b9f3cccb97/asgi_types-0.2.0-py3-none-any.whl", hash = "sha256:5f5bd59b20a6f52da35dfd68c09dd383e753e1b72d5b949047e3145447ffbb45", size = 3737, upload-time = "2026-01-29T20:42:15.89Z" },
 ]
 
 [[package]]
@@ -179,6 +192,16 @@ name = "mcp-types"
 source = { editable = "src/mcp-types" }
 
 [[package]]
+name = "mcplette"
+source = { editable = "src/mcplette" }
+dependencies = [
+    { name = "asgi-types" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "asgi-types", specifier = ">=0.2.0" }]
+
+[[package]]
 name = "mdurl"
 version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -194,6 +217,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "json2types" },
     { name = "mcp-types" },
+    { name = "mcplette" },
 ]
 
 [package.dev-dependencies]
@@ -209,6 +233,7 @@ dev = [
 requires-dist = [
     { name = "json2types", editable = "src/json2types" },
     { name = "mcp-types", editable = "src/mcp-types" },
+    { name = "mcplette", editable = "src/mcplette" },
 ]
 
 [package.metadata.requires-dev]
