@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+vcs = "git"
+style = "pep440"
+bump = true
+
+[project]
+name = "mcplette"
+dynamic = ["version"]
+description = "ASGI MCP Server"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "asgi-types>=0.2.0",
+]
